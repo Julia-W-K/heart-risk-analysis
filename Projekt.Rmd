@@ -429,3 +429,72 @@ Obliczamy AUC (pole pod wykresem ROC RANDOM FOREST): 0.8933.
 auc_value <- auc(roc_obj)
 print(paste("AUC (pole pod wykresem ROC RANDOM FOREST):", auc_value))
 ```
+
+## 3.6 Boosting
+Kolejnym modelem jest boosting. Budujemy model.
+```{r}
+dane_ami_num <- dane
+dane_ami_num$AMI <- as.numeric(as.character(dane$AMI))
+dane.test.num <- as.numeric(as.character(dane.test))
+
+boost.ami <- gbm(AMI ~ . , data = dane_ami_num[train_sample,],
+                 distribution = "bernoulli", n.trees = 5000,
+                    interaction.depth = 4)
+```
+```{r}
+#wykres pokazuje znaczenie zmiennych dla modelu
+summary(boost.ami)
+```
+Z modelu boost.ami wynika, że najbardziej wpływową
+zmienna jest WBC, następne w kolejności są LY oraz MO. 
+
+```{r}
+#gęstości brzegowe dla zmiennych
+plot(boost.ami, i = "WBC")
+plot(boost.ami, i = "LY")
+
+yhat.boost <- predict(boost.ami, newdata = dane_ami_num[-train_sample, ], n.trees = 5000)
+
+# Przekształcenie logitowej wartości na prawdopodobieństwa
+yhat.boost.prob <- 1 / (1 + exp(-yhat.boost))
+
+# Konwersja prawdopodobieństw na klasy (0 lub 1)
+yhat.boost.class <- ifelse(yhat.boost.prob >= 0.5, 1, 0)
+
+```
+Tworzymy tablicę kontyngencji.
+Prawidłowo zakwalifikował 132 obserwacji, a nieprawidłowo 30.
+```{r}
+#tablica kontyngencji
+table(yhat.boost.class, dane.test)
+#dokładność modelu
+mean(yhat.boost.class == dane.test)
+```
+
+Dokładność modelu wynosi: 0.8148. Tworzymy krzywą ROC
+```{r}
+# ROC/AUC
+
+# Dane do wykresu
+roc_obj <- roc(dane.test.num, yhat.boost.prob)
+roc_data <- data.frame(
+  TPR = roc_obj$sensitivities,   # True Positive Rate
+  FPR = 1 - roc_obj$specificities # False Positive Rate
+)
+
+# Rysowanie wykresu
+ggplot(roc_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Krzywa ROC BOOSTING", x = "False Positive Rate (FPR)", y = "True Positive Rate (TPR)") +
+  theme_minimal()
+
+```
+```{r}
+# Obliczenie AUC
+auc_value <- auc(roc_obj)
+print(paste("AUC (pole pod wykresem ROC BOOSTING):", auc_value))
+```
+
+Obliczamy AUC (pole pod wykresem ROC BOOSTING): 0.8826.
+
