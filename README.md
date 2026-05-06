@@ -13,4 +13,4 @@ Projekt analizuje ryzyko zawału serca na podstawie danych medycznych. Celem jes
 - XGBoost
 
 ## Wyniki
-Model pozwala przewidywać ryzyko z wysoką dokładnością.
+Projekt udowadnia, że prawidłowo zbudowany model może na podstawie badań krwi skutecznie wspierać diagnozy kardiologiczne.
