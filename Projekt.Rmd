@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Baza danych użytych w tym projekcie pochodzi ze strony <https://data.mendeley.com/datasets/>m482gb564t/1.
 
-Składa się z 981 obserwacji, które odpowiadają 477 pacjentom po zawale serca i 504 osobom bez zawału serca. Dane zbierano od stycznia 2020 do maja 2023, od osób, które trafiły na oddział kardiologiczny i spełniły kryteria Europejskiego Towarzystwa Kardiologicznego m.in. miały więcej niż 18 lat, nie cierpiały na przewlekłe infekcję, nie wykryto u nich nowotworu. Wiek i płeć pacjentów pozyskano z dokumentacji medycznej, natomiast wyniki badań krwi pochodzą z pierwszego badania po przybyciu na oddział ratunkowy.
+Składa się z 981 obserwacji, które odpowiadają 477 pacjentom po zawale serca i 504 osobom, u których nie wykryto zawału serca. Dane zbierano od stycznia 2020 do maja 2023, od osób, które trafiły na oddział kardiologiczny i spełniły kryteria Europejskiego Towarzystwa Kardiologicznego m.in. miały więcej niż 18 lat, nie cierpiały na przewlekłe infekcję, nie wykryto u nich nowotworu. Wiek i płeć pacjentów pozyskano z dokumentacji medycznej, natomiast wyniki badań krwi pochodzą z pierwszego badania po przybyciu na oddział ratunkowy.
 
 Baza danych składa się z następujących zmiennych:
 
