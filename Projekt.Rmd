@@ -498,3 +498,152 @@ print(paste("AUC (pole pod wykresem ROC BOOSTING):", auc_value))
 
 Obliczamy AUC (pole pod wykresem ROC BOOSTING): 0.8826.
 
+## 3.7 Bayesian additive regression tree
+Następnym modelem jest Bayesian additive regression tree (BART). Sprawdzimy dwie funkcje logitową
+lbart() oraz probitową pbart().
+```{r}
+x <- dane[, 2:8]
+dane.ami <- dane[, "AMI"]
+dane.ami <- as.numeric(as.character(dane.ami))
+xtrain <- x[train_sample, ]
+dane.ami.train <- dane.ami[train_sample]
+xtest <- x[-train_sample, ]
+dane.ami.test <- dane.ami[-train_sample]
+
+```
+Po przygotowaniu zmiennych budujemy model.
+```{r}
+# Funkcja lbart z domyślnymi parametrami
+bartfit <- lbart(xtrain, dane.ami.train, x.test = xtest)
+
+# Sprawdzamy na danych testowych:
+yhat.bart<- bartfit$prob.test.mean
+yhat.bart.class <- ifelse(yhat.bart > 0.5, 1, 0)  # Klasyfikacja binarna
+
+```
+
+Tablice kontyngencji.
+```{r}
+#tablica kontyngencji
+table(yhat.bart.class, dane.test)
+#dokładność modelu
+mean(yhat.bart.class == dane.test)
+```
+
+Model z funkcją lbart() prawidłowo zakwalifikował 126 obserwacji, model z funkcją pbart() 127. Błędnie zakwalifikowane obserwacje w pierwszym modelu to 36, a w drugim 35. Dokładność modelu z użyciem funkcji lbart() wynosi: 0.7778. Natomiast dokładność modelu z użyciem
+funkcji pbart() wynosi: 0.7840.
+
+```{r}
+ord <- order(bartfit$varcount.mean, decreasing = T)
+bartfit$varcount.mean[ord]
+# Im większa wartość, tym bardziej istotna była dana zmienna w predykcji modelu
+```
+
+Z modelu wynika, że najbardziej znaczącymi zmiennymi są: WBC,
+AGE oraz LY.
+Krzywa ROC:
+
+```{r}
+# ROC/AUC
+
+# Dane do wykresu
+roc_obj <- roc(dane.ami.test, yhat.bart)
+roc_data <- data.frame(
+  TPR = roc_obj$sensitivities,   # True Positive Rate
+  FPR = 1 - roc_obj$specificities # False Positive Rate
+)
+
+# Rysowanie wykresu
+ggplot(roc_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Krzywa ROC L BART", x = "False Positive Rate (FPR)", y = "True Positive Rate (TPR)") +
+  theme_minimal()
+
+# Obliczenie AUC
+auc_value <- auc(roc_obj)
+print(paste("AUC (pole pod wykresem ROC L BART):", auc_value))
+```
+
+## 3.8 XGBoost
+Kolejnym modelem jest XGBoost. Przekształcamy dane, aby były odpowiednie do modelu.
+```{r}
+# Wczytujemy dane:
+# 1. Konwersja danych
+x <- dane
+x[] <- lapply(x, function(col) {
+  if (is.factor(col) || is.character(col)) {
+    as.numeric(as.character(col))
+  } else {
+    as.numeric(col)
+  }
+})
+x <- as.matrix(x)
+y.ami <- as.numeric(as.character(dane[, "AMI"]))
+
+# 2. Podział na zbiory
+xtrain <- x[train_sample, ]
+y.ami.train <- y.ami[train_sample]
+xtest <- x[-train_sample, ]
+y.ami.test <- y.ami[-train_sample]
+
+data_train <- list(data = xtrain[,2:8], label = y.ami.train)
+data_test <- list(data = xtest[,2:8], label = y.ami.test)
+
+# DMatrix dla zbioru treningowego
+dtrain <- xgb.DMatrix(data = data_train$data, label = data_train$label)
+# DMatrix dla zbioru testowego
+dtest <- xgb.DMatrix(data = data_test$data, label = data_test$label)
+
+# szukanie optymalnej wartości parametru nrounds
+watchlist <- list(train=dtrain, test=dtest)
+model <- xgb.train(data = dtrain, max.depth = 3, watchlist = watchlist,
+                   nrounds = 200)
+
+bstSparse <- xgboost(data = data_train$data, label = data_train$label,
+                     max.depth = 6, eta = 0.1, nthread = 2, nrounds = 50,
+                     objective = "binary:logistic", eval_metric = "error")
+
+
+bstDMatrix <- xgboost(data = dtrain,
+                      max.depth = 2, eta = 0.1, nthread = 2, nrounds = 50,
+                      objective = "binary:logistic", eval_metric = "error")
+
+y_pred <- predict(bstDMatrix, newdata = dtest)
+y_pred_class <- ifelse(y_pred > 0.5, 1, 0)
+```
+Za pomocą
+funkcji xgb.train() i przeanalizowaniu listy, otrzymujemy parametr nrounds = 50. Budujemy model
+z uwzględnieniem tego parametru.
+
+Tworzymy tablicę kontyngencji.
+```{r}
+#tablica kontyngencji
+table(y_pred_class, y.ami.test)
+#dokładność modelu
+mean(y_pred_class == y.ami.test)
+```
+Model prawidłowo zakwalifikował 133 obserwacji, a nieprawidłowo 29.
+Dokładność modelu wynosi: 0.8201. Tworzymy krzywą ROC.
+
+```{r}
+# ROC/AUC
+
+# Dane do wykresu
+roc_obj <- roc(y.ami.test, y_pred)
+roc_data <- data.frame(
+  TPR = roc_obj$sensitivities,   # True Positive Rate
+  FPR = 1 - roc_obj$specificities # False Positive Rate
+)
+
+# Rysowanie wykresu
+ggplot(roc_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Krzywa ROC XGBOOST", x = "False Positive Rate (FPR)", y = "True Positive Rate (TPR)") +
+  theme_minimal()
+
+# Obliczenie AUC
+auc_value <- auc(roc_obj)
+print(paste("AUC (pole pod wykresem ROC XGBOOST):", auc_value))
+```
